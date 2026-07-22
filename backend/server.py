@@ -23,7 +23,7 @@ import stripe
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
-from motor.motor_asyncio import AsyncIOMotorClient  # noqa: F401
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket  # noqa: F401
 from pydantic import BaseModel, EmailStr, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
@@ -549,13 +549,52 @@ async def export_run_pdf(run_id: str, user: dict = Depends(current_user)):
         raise HTTPException(404, "Run not found")
     if run["status"] not in ("completed", "completed_with_warnings", "failed"):
         raise HTTPException(400, "Run not yet complete")
+
+    # Check if we already have a cached PDF
+    cached = await db.pdf_files.find_one({"run_id": run_id, "user_id": user["user_id"]}, {"_id": 0})
+    bucket = AsyncIOMotorGridFSBucket(db, bucket_name="pdf_bucket")
+    if cached and cached.get("gridfs_id"):
+        try:
+            from bson import ObjectId
+            stream = await bucket.open_download_stream(ObjectId(cached["gridfs_id"]))
+            data = await stream.read()
+            return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="run_{run_id}.pdf"'})
+        except Exception:
+            pass  # fall through to regenerate
+
     try:
         pdf_bytes = await asyncio.to_thread(generate_pdf, run, user["email"], sub["tier"])
     except Exception as e:
         raise HTTPException(500, f"PDF generation failed: {type(e).__name__}")
     if len(pdf_bytes) > 25 * 1024 * 1024:
         raise HTTPException(400, "PDF too large; use JSON export")
-    return Response(pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="run_{run_id}.pdf"'})
+
+    gid = await bucket.upload_from_stream(f"run_{run_id}.pdf", pdf_bytes, metadata={"run_id": run_id, "user_id": user["user_id"]})
+    signed_token = new_id("pdftok")
+    await db.pdf_files.insert_one({
+        "run_id": run_id, "user_id": user["user_id"], "gridfs_id": str(gid),
+        "size": len(pdf_bytes), "signed_token": signed_token,
+        "expires_at": (now_utc() + timedelta(minutes=15)).isoformat(),
+        "created_at": now_utc().isoformat(),
+    })
+    return Response(pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="run_{run_id}.pdf"', "X-Signed-Token": signed_token})
+
+
+@api.get("/runs/{run_id}/pdf-signed/{token}")
+async def download_signed_pdf(run_id: str, token: str):
+    rec = await db.pdf_files.find_one({"run_id": run_id, "signed_token": token}, {"_id": 0})
+    if not rec:
+        raise HTTPException(404, "Signed link not found")
+    exp = datetime.fromisoformat(rec["expires_at"])
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < now_utc():
+        raise HTTPException(410, "Signed link expired")
+    from bson import ObjectId
+    bucket = AsyncIOMotorGridFSBucket(db, bucket_name="pdf_bucket")
+    stream = await bucket.open_download_stream(ObjectId(rec["gridfs_id"]))
+    data = await stream.read()
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="run_{run_id}.pdf"'})
 
 
 @api.delete("/runs/{run_id}")
@@ -834,6 +873,7 @@ async def gdpr_export(user: dict = Depends(current_user)):
 async def gdpr_delete(user: dict = Depends(current_user)):
     uid = user["user_id"]
     await db.runs.delete_many({"user_id": uid})
+    await db.pdf_files.delete_many({"user_id": uid})
     await db.agent_traces.delete_many({"run_id": {"$regex": "."}})  # coarse cleanup by run relation
     await db.workflows.delete_many({"user_id": uid})
     await db.uploads.delete_many({"user_id": uid})
@@ -877,11 +917,24 @@ async def admin_metrics(admin: dict = Depends(admin_user)):
     runs_total = await db.runs.count_documents({})
     runs_completed = await db.runs.count_documents({"status": "completed"})
     runs_failed = await db.runs.count_documents({"status": "failed"})
+    runs_streaming = await db.runs.count_documents({"status": {"$in": ["streaming", "running", "queued"]}})
+    quota_blocked = await db.runs.count_documents({"status": "quota_blocked"})
+    payment_blocked_subs = await db.subscriptions.count_documents({"billing_status": "past_due_blocked"})
+    # Average agent duration
+    pipeline = [{"$match": {"duration_ms": {"$gt": 0}}}, {"$group": {"_id": None, "avg": {"$avg": "$duration_ms"}}}]
+    agg = await db.agent_traces.aggregate(pipeline).to_list(1)
+    avg_ms = int(agg[0]["avg"]) if agg else 0
+    provider_errors = await db.agent_traces.count_documents({"status": {"$in": ["failed", "timeout"]}})
     lines = [
         f'prometheus_users_total {users_count}',
         f'prometheus_runs_total {runs_total}',
         f'prometheus_runs_completed {runs_completed}',
         f'prometheus_runs_failed {runs_failed}',
+        f'prometheus_runs_active {runs_streaming}',
+        f'prometheus_runs_quota_blocked {quota_blocked}',
+        f'prometheus_payment_blocked_subscriptions {payment_blocked_subs}',
+        f'prometheus_agent_duration_ms_avg {avg_ms}',
+        f'prometheus_provider_errors_total {provider_errors}',
     ]
     return Response("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 

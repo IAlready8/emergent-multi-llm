@@ -99,10 +99,11 @@ async def run_agent(
     system = AGENT_PROMPTS.get(agent_type, "You are a helpful analytic agent. Return concise JSON.")
     user_text = build_user_prompt(agent_type, base_input, prior_outputs)
 
-    await bus.publish({"event": "agent_status", "agent_id": agent_id, "status": "running", "ts": now_utc().isoformat()})
+    started_ts = now_utc()
+    await bus.publish({"event": "agent_status", "agent_id": agent_id, "status": "running", "ts": started_ts.isoformat()})
     await db.agent_traces.update_one(
         {"agent_id": agent_id},
-        {"$set": {"status": "running", "started_at": now_utc().isoformat()}},
+        {"$set": {"status": "running", "started_at": started_ts.isoformat()}},
     )
 
     output_parts: list[str] = []
@@ -141,10 +142,12 @@ async def run_agent(
             output_parts.clear()
 
     final_output = "".join(output_parts)
-    await bus.publish({"event": "agent_status", "agent_id": agent_id, "status": "completed"})
+    ended_ts = now_utc()
+    duration_ms = int((ended_ts - started_ts).total_seconds() * 1000)
+    await bus.publish({"event": "agent_status", "agent_id": agent_id, "status": "completed", "duration_ms": duration_ms})
     await db.agent_traces.update_one(
         {"agent_id": agent_id},
-        {"$set": {"status": "completed", "ended_at": now_utc().isoformat(), "output": final_output}},
+        {"$set": {"status": "completed", "ended_at": ended_ts.isoformat(), "duration_ms": duration_ms, "output": final_output}},
     )
     return final_output
 
