@@ -1,0 +1,112 @@
+{
+  "theme": "dark",
+  "design_context": "SaaS Web App with Dashboard + Marketing Landing Page",
+  "typography": {
+    "headings": "IBM Plex Sans (font-sans)",
+    "body": "Inter (font-sans)",
+    "monospace": "JetBrains Mono (font-mono)",
+    "rules": [
+      "No generic fonts for headings. Use IBM Plex Sans for a technical, structured feel.",
+      "Use JetBrains Mono exclusively for agent logs, JSON outputs, and technical metadata.",
+      "Use tracking-tight for all headings > 32px.",
+      "Overlines/Labels MUST be Uppercase, text-xs, and tracking-[0.2em]."
+    ]
+  },
+  "colors": {
+    "palette_archetype": "Swiss & High-Contrast / Retro-Futurism",
+    "backgrounds": {
+      "page": "#09090B (zinc-950)",
+      "panel": "#18181B (zinc-900)",
+      "panel_hover": "#27272A (zinc-800)"
+    },
+    "text": {
+      "primary": "#FAFAFA (zinc-50)",
+      "secondary": "#A1A1AA (zinc-400)",
+      "muted": "#71717A (zinc-500)"
+    },
+    "status": {
+      "success": "#10B981 (emerald-500)",
+      "warning": "#F59E0B (amber-500)",
+      "error": "#EF4444 (red-500)",
+      "info": "#3B82F6 (blue-500)"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.1)"
+    },
+    "rules": [
+      "Use dark gray/zinc (#09090B) instead of pure black to avoid halation.",
+      "Keep text off-white or light gray for reduced visual strain.",
+      "Separate panels with 1px borders (border-white/10) rather than relying on shadows."
+    ]
+  },
+  "layouts": {
+    "dashboard": "High-density Grid. Base grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-4 or gap-6. Panels use border-collapse style layouts.",
+    "live_run_view": "Split-pane layout. Left pane: Interactive DAG graph (@xyflow/react). Right pane: Streaming logs in monospace font with minimal padding.",
+    "marketing_page": "Bento Grid Protocol. Asymmetrical sections with generative webGL/particle backgrounds.",
+    "spacing": "Use p-4 or p-6 inside dashboard panels. For marketing page, use p-12 to p-24 for luxurious spacing."
+  },
+  "components": {
+    "navigation": "Left sidebar for dashboard (collapsible). Sticky glassmorphism header for marketing page (NEVER use completely transparent backgrounds).",
+    "status_pills": "Small rounded-full indicators (e.g., green/amber/red dots) paired with monospace text.",
+    "cards_and_panels": "Flat backgrounds with 1px subtle borders (border-white/10). No soft shadows on dark mode. Sharp or max 8px border-radius.",
+    "forms_and_inputs": "Use Shadcn components heavily customized to match the technical dark theme.",
+    "dag_graph": "Use @xyflow/react for the drag-and-drop workflow builder. Nodes should be flat, technical boxes with inputs/outputs."
+  },
+  "motion": {
+    "interactions": "Micro-interactions on hover (-translate-y-1 for cards). Slight brightness increase for panel hovers.",
+    "streaming_logs": "Smooth auto-scroll for new log lines. Subtle pulse animation on active agent nodes.",
+    "accessibility": "Respect prefers-reduced-motion. Ensure hover states clearly change text/background color."
+  },
+  "visual_enhancers": {
+    "surfaces": "Grid borders (Technical look) exposing the skeleton. No full-screen generic gradients.",
+    "textures": "Subtle noise overlays on marketing page backgrounds to kill digital flatness.",
+    "glassmorphism": "Used only for marketing header (bg-black/60 with backdrop-blur-xl). Never use over data/text."
+  },
+  "accessibility": {
+    "contrast": "Ensure minimum 4.5:1 ratio for normal text. Use text shadow if placing text over images.",
+    "testing": "All interactive elements MUST include a data-testid attribute in kebab-case."
+  },
+  "media": {
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1758073519996-6d3c63b4922c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGRhdGElMjBub2RlcyUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NDcxMTE1OHww&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract blue glowing dots forming wave patterns",
+        "category": "Marketing Hero Section Background"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762163516269-3c143e04175c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwxfHxzZXJ2ZXIlMjByYWNrJTIwbmVvbiUyMGxpZ2h0c3xlbnwwfHx8fDE3ODQ3MTExNTh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Server rack with blinking green lights",
+        "category": "Features / Infrastructure Background"
+      }
+    ]
+  },
+  "libraries": {
+    "ui_components": "shadcn/ui",
+    "icons": "lucide-react",
+    "graph_editor": "@xyflow/react (for Workflow Builder and DAG visualization)",
+    "animations": "framer-motion (for marketing page reveals)",
+    "notifications": "sonner"
+  },
+  "instructions_to_main_agent": [
+    "Build a React application (.js/.jsx files) following the 'Prometheus' dark theme.",
+    "Implement the landing page with high-impact typography, utilizing the provided background images.",
+    "Build a Dashboard shell with a left sidebar for navigation.",
+    "For the Run View, implement a split-pane layout: a React Flow DAG graph on the left, and real-time streaming logs on the right.",
+    "Use JetBrains Mono (or a similar monospace font) for agent logs and JSON outputs. Make them look like a terminal.",
+    "Integrate green/amber/red status pills into both the graph nodes and the log headers.",
+    "Use 1px borders and flat surfaces for panels. Avoid large soft shadows in dark mode.",
+    "Apply 'data-testid' attributes on all buttons, links, and forms.",
+    "Ensure all hover states explicitly set text and background colors.",
+    "NEVER use completely transparent backgrounds for headers, dialogs or dropdowns."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "Do not converge toward generic AI outputs. Avoid simplistic centered layouts.",
+    "Create depth through layered design elements and subtle border highlights.",
+    "Never use `transition: all`. Target specific properties like `opacity` and `transform`.",
+    "Never apply `.App { text-align: center; }`.",
+    "Include hover states, transitions, and entrance animations for all interactive elements.",
+    "Avoid using emoji characters as icons. Use lucide-react instead.",
+    "Never use placeholder image services like via.placeholder.com. Use the provided image URLs.",
+    "Use Sonner for toasts."
+  ]
+}
