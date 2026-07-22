@@ -643,6 +643,7 @@ async def create_workflow(body: WorkflowBody, user: dict = Depends(current_user)
         "created_at": now_utc().isoformat(),
     }
     await db.workflows.insert_one(wf)
+    wf.pop("_id", None)
     return wf
 
 
