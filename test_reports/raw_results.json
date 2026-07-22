@@ -1,0 +1,126 @@
+{
+  "passed": [
+    {
+      "name": "GET /health",
+      "evidence": "200"
+    },
+    {
+      "name": "Security headers",
+      "evidence": "XCTO=nosniff XFO=DENY"
+    },
+    {
+      "name": "Admin login",
+      "evidence": "200 {\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzhkMmY3NTk3YjcyNDQ1MDAiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzg0NzEyMTQ4LCJleHAiOjE3"
+    },
+    {
+      "name": "Signup free user",
+      "evidence": "200 {\"access_token\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2M5Y2FmNmQ5M2U2ZjRiZjkiLCJ0eXBlIjoiYWNjZXNzIiwiaW"
+    },
+    {
+      "name": "GET /templates (>=3)",
+      "evidence": "200 count=3"
+    },
+    {
+      "name": "GET /billing/tiers",
+      "evidence": "200"
+    },
+    {
+      "name": "Checkout pro_monthly",
+      "evidence": "200 url=https://checkout.stripe.com/c/pay/cs_test_a1p9aHKL4JJvLTRzGK"
+    },
+    {
+      "name": "Checkout pro_annual",
+      "evidence": "200 url=https://checkout.stripe.com/c/pay/cs_test_a1qx8KOmsBNBVL9xcC"
+    },
+    {
+      "name": "Checkout enterprise_monthly",
+      "evidence": "200 url=https://checkout.stripe.com/c/pay/cs_test_a1CxWwBp8DkXR6RaMq"
+    },
+    {
+      "name": "Checkout enterprise_annual",
+      "evidence": "200 url=https://checkout.stripe.com/c/pay/cs_test_a18Jhidg8ixWNc67zj"
+    },
+    {
+      "name": "POST /runs paste (admin)",
+      "evidence": "200 {\"run_id\":\"run_6c8ed4ed99ee4396\",\"run\":{\"run_id\":\"run_6c8ed4ed99ee4396\",\"user_id\":\"user_8d2f7597b7244500\",\"workflow_id\":null,\"template_id\":\"doc_insigh"
+    },
+    {
+      "name": "SSE content-type",
+      "evidence": "text/event-stream; charset=utf-8"
+    },
+    {
+      "name": "Run completed with 3 agent_outputs",
+      "evidence": "status=completed agents=['Analyzer', 'Classifier', 'Synthesizer']"
+    },
+    {
+      "name": "POST /runs url=example.com",
+      "evidence": "200 {\"run_id\":\"run_698296a40c5c42ba\",\"run\":{\"run_id\":\"run_698296a40c5c42ba\",\"user_id\":\"user_8d2f7597b7244500\",\"workflow_id\":"
+    },
+    {
+      "name": "SSRF block private IP",
+      "evidence": "400 {\"detail\":\"Blocked URL host\"}"
+    },
+    {
+      "name": "POST /uploads txt",
+      "evidence": "200 {\"file_id\":\"file_95aabcf050fc4ab3\",\"filename\":\"test.txt\",\"size\":24,\"ext\":\"txt\"}"
+    },
+    {
+      "name": "POST /runs file",
+      "evidence": "200 {\"run_id\":\"run_90290290f1134380\",\"run\":{\"run_id\":\"run_90290290f1134380\",\"user_id\":\"user_8d2f7597b7244500\",\"workflow_id\":"
+    },
+    {
+      "name": "Free workflow 403",
+      "evidence": "403"
+    },
+    {
+      "name": "Free AnomalyDetector 403",
+      "evidence": "403 {\"detail\":\"Agent Synthesizer not available in free tier\"}"
+    },
+    {
+      "name": "Free Synthesizer 403",
+      "evidence": "403 {\"detail\":\"Agent Synthesizer not available in free tier\"}"
+    },
+    {
+      "name": "POST /feedback",
+      "evidence": "200"
+    },
+    {
+      "name": "GET /admin/overview",
+      "evidence": "200"
+    },
+    {
+      "name": "GET /admin/metrics prom",
+      "evidence": "200 ct=text/plain; version=0.0.4; charset=utf-8"
+    },
+    {
+      "name": "export.json admin",
+      "evidence": "200 ct=application/json"
+    },
+    {
+      "name": "export.pdf admin(pro/ent)",
+      "evidence": "200 ct=application/pdf"
+    },
+    {
+      "name": "GDPR export",
+      "evidence": "200"
+    },
+    {
+      "name": "GDPR delete account",
+      "evidence": "200"
+    }
+  ],
+  "failed": [
+    {
+      "name": "GET /auth/me admin",
+      "evidence": "200 is_admin=None tier=enterprise"
+    },
+    {
+      "name": "SSE events (snapshot,agent_status,agent_token)",
+      "evidence": "{'snapshot': 0, 'agent_status': 0, 'agent_token': 0, 'run_status': 0}"
+    },
+    {
+      "name": "Admin create workflow",
+      "evidence": "500 Internal Server Error"
+    }
+  ]
+}

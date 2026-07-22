@@ -1,56 +1,78 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "@/lib/auth.jsx";
+import api from "@/lib/api";
+import Landing from "@/pages/Landing.jsx";
+import Login from "@/pages/Login.jsx";
+import Signup from "@/pages/Signup.jsx";
+import Dashboard from "@/pages/Dashboard.jsx";
+import NewRun from "@/pages/NewRun.jsx";
+import RunView from "@/pages/RunView.jsx";
+import History from "@/pages/History.jsx";
+import Workflows from "@/pages/Workflows.jsx";
+import Billing from "@/pages/Billing.jsx";
+import Settings from "@/pages/Settings.jsx";
+import Admin from "@/pages/Admin.jsx";
+import PaymentSuccess from "@/pages/PaymentSuccess.jsx";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
+function AuthCallback() {
+  const navigate = useNavigate();
+  const processed = useRef(false);
   useEffect(() => {
-    helloWorldApi();
-  }, []);
+    if (processed.current) return;
+    processed.current = true;
+    const hash = window.location.hash || "";
+    const sid = new URLSearchParams(hash.replace(/^#/, "")).get("session_id");
+    if (!sid) { navigate("/login"); return; }
+    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
+    api.post("/auth/google/session", { session_id: sid })
+      .then(() => {
+        window.location.hash = "";
+        navigate("/app", { replace: true });
+        window.location.reload();
+      })
+      .catch(() => navigate("/login"));
+  }, [navigate]);
+  return <div className="min-h-screen flex items-center justify-center text-zinc-400 font-mono text-sm">Establishing session…</div>;
+}
 
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+function Protected({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-zinc-400 font-mono text-sm">Loading…</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
 
-function App() {
+function AppRouter() {
+  const location = useLocation();
+  if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/app" element={<Protected><Dashboard /></Protected>} />
+      <Route path="/app/new" element={<Protected><NewRun /></Protected>} />
+      <Route path="/app/runs/:runId" element={<Protected><RunView /></Protected>} />
+      <Route path="/app/history" element={<Protected><History /></Protected>} />
+      <Route path="/app/workflows" element={<Protected><Workflows /></Protected>} />
+      <Route path="/app/billing" element={<Protected><Billing /></Protected>} />
+      <Route path="/app/settings" element={<Protected><Settings /></Protected>} />
+      <Route path="/app/admin" element={<Protected><Admin /></Protected>} />
+      <Route path="/payment/success" element={<Protected><PaymentSuccess /></Protected>} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRouter />
+        <Toaster theme="dark" position="top-right" richColors />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}

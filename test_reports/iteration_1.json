@@ -1,0 +1,50 @@
+{
+  "summary": "Backend smoke test for Prometheus platform. 27 checks passed, 1 real backend bug (POST /workflows returns 500). Two initial 'failures' were test-script parsing bugs (nested is_admin path, SSE data-only frames) and were manually re-verified as PASSING against raw server response.",
+  "tested_scope": ["backend", "auth", "integration"],
+  "passed": [
+    "GET /api/health -> 200 {status:ok}",
+    "Security headers: X-Content-Type-Options=nosniff, X-Frame-Options=DENY present",
+    "POST /api/auth/login admin -> 200, access_token+refresh_token returned",
+    "GET /api/auth/me admin -> user.is_admin=true, subscription.tier=enterprise (nested under user/subscription)",
+    "POST /api/auth/signup fresh user -> 200 with access_token",
+    "GET /api/templates -> 3 templates returned",
+    "GET /api/billing/tiers -> 200",
+    "POST /api/billing/checkout for pro_monthly, pro_annual, enterprise_monthly, enterprise_annual -> all 200 with valid https://checkout.stripe.com URL",
+    "POST /api/runs input_type=paste template=doc_insight -> 200, run_id returned",
+    "SSE GET /api/runs/{id}/stream: text/event-stream content-type, emits snapshot, agent_status, agent_token deltas, and terminal run_status events (all observed in raw stream)",
+    "Run reaches status=completed within ~15s with 3 agent_outputs: Analyzer, Classifier, Synthesizer",
+    "POST /api/runs input_type=url https://example.com -> 200",
+    "SSRF protection: http://127.0.0.1 -> 400 'Blocked URL host'",
+    "POST /api/uploads txt file -> 200 with file_id",
+    "POST /api/runs input_type=file with file_ids -> 200",
+    "Free-tier user POST /api/workflows -> 403 (correctly blocked)",
+    "Free-tier user requesting AnomalyDetector/Synthesizer agent -> 403",
+    "POST /api/feedback -> 200",
+    "GET /api/admin/overview -> 200",
+    "GET /api/admin/metrics -> 200 text/plain Prometheus format",
+    "GET /api/runs/{id}/export.json admin -> 200 application/json",
+    "GET /api/runs/{id}/export.pdf admin (enterprise) -> 200 application/pdf",
+    "GET /api/gdpr/export -> 200",
+    "DELETE /api/gdpr/account -> 200"
+  ],
+  "failed": [
+    {
+      "area": "Workflows API",
+      "issue": "POST /api/workflows returns 500 Internal Server Error when creating a workflow with body {name, agents:[{type:'Analyzer',provider:'gemini'}]} as admin/enterprise user",
+      "evidence": "Backend log: TypeError: vars() argument must have __dict__ attribute at fastapi/encoders.py line 327 (jsonable_encoder). Response body: 'Internal Server Error'. Cause: server.py:646 `return wf` where wf['agents'] contains Pydantic AgentSpec models that fail jsonable_encoder; possibly also body.agents[i].get('type') at line 635 called on Pydantic model instead of dict.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "Fix POST /api/workflows in /app/backend/server.py create_workflow(): (1) convert AgentSpec Pydantic objects to dicts before iterating with .get() and before storing/returning (use [a.model_dump() for a in body.agents] or a.type attribute access), (2) ensure returned wf dict is JSON-serializable."
+  ],
+  "success_rate": {"backend": "96% (27/28 checks)", "frontend": "not tested (skipped per request)"},
+  "retest_needed": true,
+  "full_testing_deferred": true,
+  "notes": {
+    "test_script_false_negatives_reverified": [
+      "GET /api/auth/me: is_admin/tier are nested under 'user' and 'subscription' keys — verified is_admin=true, tier=enterprise",
+      "SSE stream: server emits SSE frames as `data: {\"event\": \"...\"}` JSON payloads (no `event:` line prefix). All required event types (snapshot, agent_status, agent_token, run_status) present in raw capture."
+    ]
+  }
+}
